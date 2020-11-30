@@ -534,14 +534,19 @@ class SpeedtestHTTPHandler(AbstractHTTPHandler):
         self.timeout = timeout
 
     def http_open(self, req):
-        return self.do_open(
-            _build_connection(
-                SpeedtestHTTPConnection,
-                self.source_address,
-                self.timeout
-            ),
-            req
-        )
+        try:
+            return self.do_open(
+                _build_connection(
+                    SpeedtestHTTPConnection,
+                    self.source_address,
+                    self.timeout
+                ),
+                req
+            )
+        except BadStatusLine:
+            raise SpeedtestHTTPError(
+                'Server returned bad status code'
+            )
 
     http_request = AbstractHTTPHandler.do_request_
 
@@ -558,15 +563,20 @@ class SpeedtestHTTPSHandler(AbstractHTTPHandler):
         self.timeout = timeout
 
     def https_open(self, req):
-        return self.do_open(
-            _build_connection(
-                SpeedtestHTTPSConnection,
-                self.source_address,
-                self.timeout,
-                context=self._context,
-            ),
-            req
-        )
+        try:
+            return self.do_open(
+                _build_connection(
+                    SpeedtestHTTPSConnection,
+                    self.source_address,
+                    self.timeout,
+                    context=self._context,
+                ),
+                req
+            )
+        except BadStatusLine:
+            raise SpeedtestHTTPError(
+                'Server returned bad status code'
+            )
 
     https_request = AbstractHTTPHandler.do_request_
 
@@ -1567,7 +1577,7 @@ class Speedtest(object):
             cons_thread.join(timeout=0.001)
 
         stop = timeit.default_timer()
-        self.results.bytes_received = sum(finished)
+        self.results.bytes_received = sum(filter(None, finished))
         self.results.download = (
             (self.results.bytes_received / (stop - start)) * 8.0
         )
@@ -1661,7 +1671,7 @@ class Speedtest(object):
             cons_thread.join(timeout=0.1)
 
         stop = timeit.default_timer()
-        self.results.bytes_sent = sum(finished)
+        self.results.bytes_sent = sum(filter(None, finished))
         self.results.upload = (
             (self.results.bytes_sent / (stop - start)) * 8.0
         )
